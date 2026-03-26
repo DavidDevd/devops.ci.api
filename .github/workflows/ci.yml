@@ -34,4 +34,4 @@ jobs:
 
 
       - name: Build docker image
-        run: docker build -t davops-ci-api:${{steps.generate_tag.outputs.sha}}
+        run: docker build -t davops-ci-api:${{steps.generate_tag.outputs.sha}} .
