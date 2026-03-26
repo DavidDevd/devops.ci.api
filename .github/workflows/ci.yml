@@ -26,4 +26,4 @@ jobs:
       - run: npm test
 
       - name: Build docker image
-        run: docker build -t davops-ci-api
+        run: docker build -t davops-ci-api:latest .
