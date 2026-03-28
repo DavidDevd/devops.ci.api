@@ -9,17 +9,18 @@ jobs:
   build:
     name: 'Build and push'
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node: [20, 22, 24]
-
+    #strategy:
+      #matrix:
+        #node: [20, 22, 24]
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup node | ${{matrix.node}}
+      #- name: Setup node | ${{matrix.node}
+      - name: Setup node 
         uses: actions/setup-node@v4
         with:
-          node-version: ${{matrix.node}}
+          #node-version: ${{matrix.node}
+          node-version: 24
           cache: 'npm'
 
       - run: npm install
@@ -38,10 +39,18 @@ jobs:
           username: ${{secrets.DOCKERHUB_USERNAME}}
           password: ${{secrets.DOCKERHUB_TOKEN}}
 
-      - name: Build docker image
-        run: docker build -t davidevv/davops-ci-api:${{steps.generate_tag.outputs.sha}} .
+
+      - name: Build and Push
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          tags: davidevv/davops-ci-api:${{steps.generate_tag.outputs.sha}}, davidevv/davops-ci-api:latest
 
 
-      - name: Push image
-        run: docker push davidevv/davops-ci-api:${{steps.generate_tag.outputs.sha}}
+      #- name: Build docker image
+       # run: docker build -t davidevv/davops-ci-api:${{steps.generate_tag.outputs.sha} .
+
+
+      #- name: Push image
+        #run: docker push davidevv/davops-ci-api:${{steps.generate_tag.outputs.sha}
          
