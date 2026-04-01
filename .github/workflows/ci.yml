@@ -9,23 +9,29 @@ jobs:
   build:
     name: 'Build and push'
     runs-on: ubuntu-latest
+    
+    # ✅ Necessário para autenticação OIDC com a AWS
+    permissions:
+      id-token: write
+      contents: read
+
     #strategy:
       #matrix:
         #node: [20, 22, 24]
+
     steps:
       - uses: actions/checkout@v4
 
-      #- name: Setup node | ${{matrix.node}
+      #- name: Setup node | ${{matrix.node}}
       - name: Setup node 
         uses: actions/setup-node@v4
         with:
-          #node-version: ${{matrix.node}
+          #node-version: ${{matrix.node}}
           node-version: 24
           cache: 'npm'
 
       - run: npm install
       - run: npm test
-
 
       - name: Generate tag
         id: generate_tag
@@ -39,7 +45,6 @@ jobs:
           role-to-assume: arn:aws:iam::261597939254:role/ecr-role
           aws-region: us-east-2
 
-
       - name: Login aws ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -48,21 +53,20 @@ jobs:
       #- name: Login into the container registry
         #uses: docker/login-action@v3
         #with: 
-          #username: ${{secrets.DOCKERHUB_USERNAME}
-          #password: ${{secrets.DOCKERHUB_TOKEN}
+          #username: ${{secrets.DOCKERHUB_USERNAME}}
+          #password: ${{secrets.DOCKERHUB_TOKEN}}
 
 
       #- name: Build and Push
         #uses: docker/build-push-action@v5
         #with:
           #push: true
-          #tags: davidevv/davops-ci-api:${{steps.generate_tag.outputs.sha}, davidevv/davops-ci-api:latest
+          #tags: davidevv/davops-ci-api:${{steps.generate_tag.outputs.sha}}, davidevv/davops-ci-api:latest
 
 
       #- name: Build docker image
-       # run: docker build -t davidevv/davops-ci-api:${{steps.generate_tag.outputs.sha} .
+        #run: docker build -t davidevv/davops-ci-api:${{steps.generate_tag.outputs.sha}} .
 
 
       #- name: Push image
-        #run: docker push davidevv/davops-ci-api:${{steps.generate_tag.outputs.sha}
-         
+        #run: docker push davidevv/davops-ci-api:${{steps.generate_tag.outputs.sha}}
