@@ -50,23 +50,16 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
         
       
-      #- name: Login into the container registry
-        #uses: docker/login-action@v3
-        #with: 
-          #username: ${{secrets.DOCKERHUB_USERNAME}}
-          #password: ${{secrets.DOCKERHUB_TOKEN}}
 
 
-      #- name: Build and Push
-        #uses: docker/build-push-action@v5
-        #with:
-          #push: true
-          #tags: davidevv/davops-ci-api:${{steps.generate_tag.outputs.sha}}, davidevv/davops-ci-api:latest
-
-
-      #- name: Build docker image
-        #run: docker build -t davidevv/davops-ci-api:${{steps.generate_tag.outputs.sha}} .
-
+      - name: Build docker image
+        env:
+          REGISTRY: ${{steps.login-ecr.outputs.registry}} 
+          TAG: ${{steps.generate_tag.outputs.sha}} 
+        run: |
+         docker build -t $REGISTRY/davops-ci:$TAG .
+         docker push $REGISTRY/davops-ci:$TAG
+         
 
       #- name: Push image
         #run: docker push davidevv/davops-ci-api:${{steps.generate_tag.outputs.sha}}
