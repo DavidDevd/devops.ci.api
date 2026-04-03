@@ -52,24 +52,25 @@ jobs:
       
       - name: Build docker image
         env:
+          id: build-docker-image
           REGISTRY: ${{steps.login-ecr.outputs.registry}} 
           TAG: ${{steps.generate_tag.outputs.sha}} 
         run: |
          docker build -t $REGISTRY/davops-ci:$TAG .
          docker push $REGISTRY/davops-ci:$TAG
-         SHA=$(echo $GITHUB_SHA | head -c7)
-         echo "sha=$SHA" >> $GITHUB_OUTPUT
+         IMAGE=$(echo $REGISTRY/davops-ci:$TAG)
+         echo "image=$IMAGE" >> $GITHUB_OUTPUT
 
     
       - name: Deploy to App Runner
         uses: awslabs/amazon-amazon-app-runner-deploy@main
         with:
           service: davops-api
-          image: 261597939254.dkr.ecr.us-east-2.amazonaws.com/davops-ci:651a326
+          image: ${{ steps.build-docker-image.outputs.image }}
           acess-role-arn: arn:aws:iam::261597939254:role/app-runner-role
           region: us-east-2
           cpu: 1
-          memory: 1
+          memory: 2
           port: 3000
           
 
