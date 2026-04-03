@@ -10,23 +10,16 @@ jobs:
     name: 'Build and push'
     runs-on: ubuntu-latest
     
-    # ✅ Necessário para autenticação OIDC com a AWS
     permissions:
       id-token: write
       contents: read
 
-    #strategy:
-      #matrix:
-        #node: [20, 22, 24]
-
     steps:
       - uses: actions/checkout@v4
 
-      #- name: Setup node | ${{matrix.node}}
       - name: Setup node 
         uses: actions/setup-node@v4
         with:
-          #node-version: ${{matrix.node}}
           node-version: 24
           cache: 'npm'
 
@@ -36,8 +29,8 @@ jobs:
       - name: Generate tag
         id: generate_tag
         run: |
-         SHA=$(echo $GITHUB_SHA | head -c7)
-         echo "sha=$SHA" >> $GITHUB_OUTPUT
+          SHA=$(echo $GITHUB_SHA | head -c7)
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -49,32 +42,23 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
         
-      
       - name: Build docker image
+        id: build-docker-image  # ✅ CORRIGIDO: estava dentro de env (lugar errado)
         env:
-          id: build-docker-image
-          REGISTRY: ${{steps.login-ecr.outputs.registry}} 
-          TAG: ${{steps.generate_tag.outputs.sha}} 
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }} 
+          TAG: ${{ steps.generate_tag.outputs.sha }} 
         run: |
-         docker build -t $REGISTRY/davops-ci:$TAG .
-         docker push $REGISTRY/davops-ci:$TAG
-         IMAGE=$(echo $REGISTRY/davops-ci:$TAG)
-         echo "image=$IMAGE" >> $GITHUB_OUTPUT
+          docker build -t $REGISTRY/davops-ci:$TAG .
+          docker push $REGISTRY/davops-ci:$TAG
+          echo "image=$REGISTRY/davops-ci:$TAG" >> $GITHUB_OUTPUT  # ✅ CORRIGIDO: variável IMAGE desnecessária
 
-    
       - name: Deploy to App Runner
-        uses: awslabs/amazon-amazon-app-runner-deploy@main
+        uses: awslabs/amazon-app-runner-deploy@main  # ✅ CORRIGIDO: "amazon-amazon" → "amazon"
         with:
           service: davops-api
           image: ${{ steps.build-docker-image.outputs.image }}
-          acess-role-arn: arn:aws:iam::261597939254:role/app-runner-role
+          access-role-arn: arn:aws:iam::261597939254:role/app-runner-role  # ✅ CORRIGIDO: "acess" → "access"
           region: us-east-2
           cpu: 1
           memory: 2
           port: 3000
-          
-
-        
-
-      #- name: Push image
-        #run: docker push davidevv/davops-ci-api:${{steps.generate_tag.outputs.sha}}
