@@ -66,10 +66,67 @@ jobs:
           docker build -t $IMAGE_URI .
           docker push $IMAGE_URI
 
+  deploy-dev:
+    name: "Deploy Dev"
+    runs-on: ubuntu-latest
+    needs: build-and-push-dev
+
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: arn:aws:iam::261597939254:role/dev-ecr-role
+
+      - name: Deploy to AppRunner Dev
+        run: |
+          SERVICE_ARN=$(aws apprunner list-services \
+            --query "ServiceSummaryList[?ServiceName=='dev-davops-api'].ServiceArn" \
+            --output text \
+            --region ${{ env.AWS_REGION }})
+          
+          aws apprunner update-service \
+            --service-arn $SERVICE_ARN \
+            --source-configuration "{\"ImageRepository\":{\"ImageIdentifier\":\"261597939254.dkr.ecr.us-east-2.amazonaws.com/${{ env.ECR_REPO_DEV }}:${{ needs.build-and-push-dev.outputs.image_tag }}\",\"ImageRepositoryType\":\"ECR\",\"ImageConfiguration\":{\"Port\":\"8000\"}},\"AuthenticationConfiguration\":{\"AccessRoleArn\":\"arn:aws:iam::261597939254:role/dev-app-runner-role\"}}" \
+            --region ${{ env.AWS_REGION }}
+
+  health-check-dev:
+    name: "Health Check Dev"
+    runs-on: ubuntu-latest
+    needs: deploy-dev
+
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: arn:aws:iam::261597939254:role/dev-ecr-role
+
+      - name: Get AppRunner URL
+        id: get-url
+        run: |
+          URL=$(aws apprunner list-services \
+            --query "ServiceSummaryList[?ServiceName=='dev-davops-api'].ServiceUrl" \
+            --output text \
+            --region ${{ env.AWS_REGION }})
+          echo "url=https://$URL" >> $GITHUB_OUTPUT
+
+      - name: Wait for deploy
+        run: sleep 60
+
+      - name: Check health
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" ${{ steps.get-url.outputs.url }}/health)
+          if [ $STATUS -ne 200 ]; then
+            echo "❌ Health check falhou! Status: $STATUS"
+            exit 1
+          fi
+          echo "✅ Health check passou! Status: $STATUS"
+
   build-and-push-prod:
     name: "Build and Push Prod"
     runs-on: ubuntu-latest
-    needs: build-and-push-dev
+    needs: health-check-dev
     outputs:
       image_tag: ${{ steps.vars.outputs.image_tag }}
 
@@ -97,5 +154,26 @@ jobs:
           docker build -t $IMAGE_URI .
           docker push $IMAGE_URI
 
-  # deploy-dev, health-check-dev e deploy-prod desativados
-  # até o AppRunner estar criado pelo Terraform
+  deploy-prod:
+    name: "Deploy Prod"
+    runs-on: ubuntu-latest
+    needs: build-and-push-prod
+
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: arn:aws:iam::261597939254:role/prod-ecr-role
+
+      - name: Deploy to AppRunner Prod
+        run: |
+          SERVICE_ARN=$(aws apprunner list-services \
+            --query "ServiceSummaryList[?ServiceName=='prod-davops-api'].ServiceArn" \
+            --output text \
+            --region ${{ env.AWS_REGION }})
+
+          aws apprunner update-service \
+            --service-arn $SERVICE_ARN \
+            --source-configuration "{\"ImageRepository\":{\"ImageIdentifier\":\"261597939254.dkr.ecr.us-east-2.amazonaws.com/${{ env.ECR_REPO_PROD }}:${{ needs.build-and-push-prod.outputs.image_tag }}\",\"ImageRepositoryType\":\"ECR\",\"ImageConfiguration\":{\"Port\":\"8000\"}},\"AuthenticationConfiguration\":{\"AccessRoleArn\":\"arn:aws:iam::261597939254:role/prod-app-runner-role\"}}" \
+            --region ${{ env.AWS_REGION }}
