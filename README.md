@@ -1,59 +1,62 @@
-# devops.ci.api 🚀
+# FastAPI CI/CD Demo API
 
-API de exemplo construída com **FastAPI** para demonstrar pipeline CI/CD 
-com GitHub Actions e deploy no AWS AppRunner.
+Containerized FastAPI application used to demonstrate a DevOps pipeline with automated tests, Docker image build, Amazon ECR publishing and AWS App Runner deployment.
 
-## Estrutura
+This repository is part of a pair:
 
+- Application repository: `DavidDevd/devops.ci.api`
+- Infrastructure repository: `DavidDevd/devops.ci.iac`
 
-devops.ci.api/
-├── app/
-│   ├── main.py           # Aplicação FastAPI
-│   └── requirements.txt  # Dependências
-├── tests/
-│   └── test_main.py      # Testes automatizados
-├── Dockerfile            # Build da imagem
-└── .github/
-└── workflows/
-└── ci-cd.yml     # Pipeline CI/CD
+## What This Project Shows
 
+- FastAPI application with simple health endpoints
+- Automated tests with `pytest`
+- Docker image build
+- CI/CD workflow with GitHub Actions
+- Deployment target designed for AWS App Runner
 
 ## Endpoints
 
-| Método | Endpoint  | Descrição |
-|--------|-----------|-----------|
-| GET | `/`       | Informações da API |
-| GET | `/health` | Health check |
-| GET | `/info`   | Informações do ambiente |
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| GET | `/` | API metadata |
+| GET | `/health` | Health check endpoint |
+| GET | `/info` | Runtime environment information |
 
-## Como rodar localmente
+## Run Locally
+
 ```bash
-# Instalar dependências
 pip install -r app/requirements.txt
-
-# Rodar a aplicação
 uvicorn app.main:app --reload --port 8000
+```
 
-# Rodar os testes
+## Run Tests
+
+```bash
 pytest tests/
 ```
 
-## Como rodar com Docker
-```bash
-# Build
-docker build -t davops-api .
+## Run With Docker
 
-# Run
+```bash
+docker build -t davops-api .
 docker run -p 8000:8000 -e ENV=local davops-api
 ```
 
-## Pipeline CI/CD
+## CI/CD Flow
 
-| Estágio | Descrição |
-|---------|-----------|
-| Test | Roda os testes automatizados |
-| Build | Constrói a imagem Docker |
-| Push ECR | Envia a imagem para o ECR |
-| Deploy Dev | Deploy no AppRunner dev |
-| Health Check | Verifica saúde da aplicação em dev |
-| Deploy Prod | Deploy no AppRunner prod |
+```text
+Push to GitHub
+  -> Run tests
+  -> Build Docker image
+  -> Push image to Amazon ECR
+  -> Deploy to AWS App Runner
+  -> Validate health endpoint
+```
+
+## Related Project
+
+Infrastructure for this API is available at:
+
+https://github.com/DavidDevd/devops.ci.iac
+
