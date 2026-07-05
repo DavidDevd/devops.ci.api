@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "app/**"
+      - "tests/**"
+      - "Dockerfile"
+      - ".github/workflows/ci-cd.yml"
 
 permissions:
   id-token: write
@@ -13,6 +18,8 @@ env:
   AWS_REGION: us-east-2
   ECR_REPO_DEV: dev-davops-api
   ECR_REPO_PROD: prod-davops-api
+  APP_RUNNER_SERVICE_DEV: dev-davops-api
+  APP_RUNNER_SERVICE_PROD: prod-davops-api
 
 jobs:
 
@@ -81,12 +88,18 @@ jobs:
       - name: Deploy to AppRunner Dev
         run: |
           SERVICE_ARN=$(aws apprunner list-services \
-            --query "ServiceSummaryList[?ServiceName=='dev-davops-api'].ServiceArn" \
+            --query "ServiceSummaryList[?ServiceName=='${{ env.APP_RUNNER_SERVICE_DEV }}'].ServiceArn" \
             --output text \
             --region ${{ env.AWS_REGION }})
+
+          if [ -z "$SERVICE_ARN" ] || [ "$SERVICE_ARN" = "None" ]; then
+            echo "App Runner service '${{ env.APP_RUNNER_SERVICE_DEV }}' was not found in region '${{ env.AWS_REGION }}'."
+            echo "Check whether the Terraform project has been applied and whether the service name matches the workflow."
+            exit 1
+          fi
           
           aws apprunner update-service \
-            --service-arn $SERVICE_ARN \
+            --service-arn "$SERVICE_ARN" \
             --source-configuration "{\"ImageRepository\":{\"ImageIdentifier\":\"261597939254.dkr.ecr.us-east-2.amazonaws.com/${{ env.ECR_REPO_DEV }}:${{ needs.build-and-push-dev.outputs.image_tag }}\",\"ImageRepositoryType\":\"ECR\",\"ImageConfiguration\":{\"Port\":\"8000\"}},\"AuthenticationConfiguration\":{\"AccessRoleArn\":\"arn:aws:iam::261597939254:role/dev-app-runner-role\"}}" \
             --region ${{ env.AWS_REGION }}
 
@@ -106,9 +119,15 @@ jobs:
         id: get-url
         run: |
           URL=$(aws apprunner list-services \
-            --query "ServiceSummaryList[?ServiceName=='dev-davops-api'].ServiceUrl" \
+            --query "ServiceSummaryList[?ServiceName=='${{ env.APP_RUNNER_SERVICE_DEV }}'].ServiceUrl" \
             --output text \
             --region ${{ env.AWS_REGION }})
+
+          if [ -z "$URL" ] || [ "$URL" = "None" ]; then
+            echo "App Runner service '${{ env.APP_RUNNER_SERVICE_DEV }}' URL was not found in region '${{ env.AWS_REGION }}'."
+            exit 1
+          fi
+
           echo "url=https://$URL" >> $GITHUB_OUTPUT
 
       - name: Wait for deploy
@@ -169,11 +188,17 @@ jobs:
       - name: Deploy to AppRunner Prod
         run: |
           SERVICE_ARN=$(aws apprunner list-services \
-            --query "ServiceSummaryList[?ServiceName=='prod-davops-api'].ServiceArn" \
+            --query "ServiceSummaryList[?ServiceName=='${{ env.APP_RUNNER_SERVICE_PROD }}'].ServiceArn" \
             --output text \
             --region ${{ env.AWS_REGION }})
 
+          if [ -z "$SERVICE_ARN" ] || [ "$SERVICE_ARN" = "None" ]; then
+            echo "App Runner service '${{ env.APP_RUNNER_SERVICE_PROD }}' was not found in region '${{ env.AWS_REGION }}'."
+            echo "Check whether the Terraform project has been applied and whether the service name matches the workflow."
+            exit 1
+          fi
+
           aws apprunner update-service \
-            --service-arn $SERVICE_ARN \
+            --service-arn "$SERVICE_ARN" \
             --source-configuration "{\"ImageRepository\":{\"ImageIdentifier\":\"261597939254.dkr.ecr.us-east-2.amazonaws.com/${{ env.ECR_REPO_PROD }}:${{ needs.build-and-push-prod.outputs.image_tag }}\",\"ImageRepositoryType\":\"ECR\",\"ImageConfiguration\":{\"Port\":\"8000\"}},\"AuthenticationConfiguration\":{\"AccessRoleArn\":\"arn:aws:iam::261597939254:role/prod-app-runner-role\"}}" \
             --region ${{ env.AWS_REGION }}
